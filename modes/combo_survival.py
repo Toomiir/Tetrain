@@ -117,15 +117,15 @@ class ComboSurvivalMode:
                     self.last_fall_time = current_time
 
     def update(self, current_time):
+        self.elapsed_time = (current_time - self.start_ticks) // 1000
         kb = self.config.get("keybinds", {
             "left": pygame.K_LEFT, "right": pygame.K_RIGHT, "soft_drop": pygame.K_DOWN,
             "hard_drop": pygame.K_SPACE, "rotate_cw": pygame.K_UP, "rotate_ccw": pygame.K_z, "hold": pygame.K_c
         })
         pressed = pygame.key.get_pressed()
 
-        # Evaluación de DAS / ARR según las teclas asignadas
         for action, dx in [("left", -1), ("right", 1)]:
-            key_code = kb[action]
+            key_code = kb.get(action, pygame.K_LEFT if dx == -1 else pygame.K_RIGHT)
             if pressed[key_code]:
                 if not self.das_active.get(action, False):
                     if current_time - self.das_timer.get(action, 0) >= self.config["das"]:
@@ -147,6 +147,46 @@ class ComboSurvivalMode:
             else:
                 self.das_active[action] = False
 
+        is_soft_dropping = pressed[kb.get("soft_drop", pygame.K_DOWN)]
+        if is_soft_dropping and self.config.get("soft_drop_speed", 50) == 0:
+            while self.board.is_valid_position(self.current_piece, dx=0, dy=1):
+                self.current_piece.move(0, 1)
+
+        is_grounded = not self.board.is_valid_position(self.current_piece, dx=0, dy=1)
+
+        if is_grounded or self.force_lock:
+            if self.lock_timer_start == 0 and not self.force_lock:
+                self.lock_timer_start = current_time
+            elif self.force_lock or (current_time - self.lock_timer_start >= self.config["lock_delay"]):
+                is_t_spin = self.board.check_t_spin(self.current_piece)
+                previous_combo = self.stats.combo  # ACÁ RECUPERAMOS LA LECTURA DEL COMBO
+                
+                self.board.lock_piece(self.current_piece)
+                lines_cleared, is_pc = self.board.clear_lines()
+                self.stats.update(lines_cleared, is_t_spin, is_pc)
+
+                combo_broken = (previous_combo >= 0 and lines_cleared == 0) # ACÁ RECUPERAMOS LA REGLA
+                
+                if self.stats.combo > self.max_combo_reached:
+                    self.max_combo_reached = self.stats.combo
+
+                self.current_piece = self.randomizer.get_next_piece()
+                self.lock_timer_start = 0
+                self.force_lock = False
+                self.last_fall_time = current_time 
+                self.can_hold = True  
+                
+                if combo_broken or not self.board.is_valid_position(self.current_piece):
+                    return True 
+        else:
+            self.lock_timer_start = 0
+            sd_speed = self.config.get("soft_drop_speed", 50)
+            current_gravity = sd_speed if is_soft_dropping and sd_speed > 0 else 1000
+            if current_time - self.last_fall_time >= current_gravity:
+                self.current_piece.move(0, 1)
+                self.last_fall_time = current_time
+                
+        return False
         # Soft drop con soporte para Soft Drop Instantáneo / Infinito (0 ms)
         is_soft_dropping = pressed[kb["soft_drop"]]
         if is_soft_dropping and self.config.get("soft_drop_speed", 50) == 0:
