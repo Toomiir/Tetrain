@@ -74,20 +74,32 @@ class Piece:
                     py = offset_y + (self.y + row_idx) * CELL_SIZE
                     rect = pygame.Rect(px, py, CELL_SIZE, CELL_SIZE)
                     pygame.draw.rect(surface, self.color, rect)
-                    pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+                    #pygame.draw.rect(surface, (255, 255, 255), rect, 1)
 
     def draw_ghost(self, surface, board, offset_x, offset_y):
         drop_distance = 0
         while board.is_valid_position(self, dx=0, dy=drop_distance + 1):
             drop_distance += 1
 
+        # Creamos una superficie temporal con soporte de transparencia (alpha) para cada bloque
         for row_idx, row in enumerate(self.shape):
             for col_idx, cell in enumerate(row):
                 if cell == 1:
                     px = offset_x + (self.x + col_idx) * CELL_SIZE
                     py = offset_y + (self.y + drop_distance + row_idx) * CELL_SIZE
-                    rect = pygame.Rect(px, py, CELL_SIZE, CELL_SIZE)
-                    pygame.draw.rect(surface, self.color, rect, 2) 
+                    
+                    # Creamos una superficie cuadrada con perfiles alpha
+                    ghost_surface = pygame.Surface((CELL_SIZE, CELL_SIZE), pygame.SRCALPHA)
+                    
+                    # Color gris sólido con opacidad (R, G, B, Alpha de 0 a 255)
+                    # Puedes cambiar (100, 100, 100, 100) por el color de la pieza si prefieres que conserve su tono original atenuado
+                    ghost_color = (100, 100, 100, 100) 
+                    
+                    # Dibujamos el rectángulo relleno dentro de la superficie temporal
+                    pygame.draw.rect(ghost_surface, ghost_color, (0, 0, CELL_SIZE, CELL_SIZE))
+                    
+                    # Volcamos la superficie translúcida sobre la pantalla principal
+                    surface.blit(ghost_surface, (px, py))
 
     def draw_absolute(self, surface, px, py):
         for row_idx, row in enumerate(self.shape):
@@ -95,4 +107,4 @@ class Piece:
                 if cell == 1:
                     rect = pygame.Rect(px + col_idx * CELL_SIZE, py + row_idx * CELL_SIZE, CELL_SIZE, CELL_SIZE)
                     pygame.draw.rect(surface, self.color, rect)
-                    pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+                   # pygame.draw.rect(surface, (255, 255, 255), rect, 1)

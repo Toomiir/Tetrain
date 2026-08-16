@@ -82,4 +82,4 @@ class Board:
                     pygame.draw.rect(surface, GRID_COLOR, rect, 1)
                 else:
                     pygame.draw.rect(surface, cell_value, rect)
-                    pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+                    #pygame.draw.rect(surface, (255, 255, 255), rect, 1)
